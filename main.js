@@ -400,7 +400,7 @@ function tickWork() {
   const effectiveDuration = postponeEndTime > 0 ? postponeEndTime : workDuration;
   const remaining = effectiveDuration - elapsedWork;
 
-  if (remaining <= preLockWarningTime && !preLockTriggered && !isPostponed) {
+  if (remaining <= preLockWarningTime && !preLockTriggered && !isPostponed && postponeCount < 2) {
     preLockTriggered = true;
     createPreLockWindow();
   }
