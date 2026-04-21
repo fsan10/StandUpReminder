@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>久坐提醒</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ==================== 主页：左右结构 ==================== -->
+  <div class="view active" id="view-main">
+    <div class="home-layout">
+      <!-- 左侧：进度环 + 状态 + 工作信息 -->
+      <div class="left-panel">
+        <!-- Glow overlay for postpone warning -->
+        <div class="glow-overlay"></div>
+
+        <div class="ring-wrap anim-up d1">
+          <svg viewBox="0 0 200 200">
+            <circle class="ring-bg" cx="100" cy="100" r="84"/>
+            <circle class="ring-fill" id="progressRing" cx="100" cy="100" r="84"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-time" id="timerDisplay">--:--</div>
+            <div class="ring-label">剩余时间</div>
+          </div>
+        </div>
+
+        <div class="status-badge anim-up d2" id="statusBadge">
+          <div class="dot"></div>
+          <span id="statusText">等待开始</span>
+        </div>
+
+        <div class="work-info anim-up d3">
+          <div class="work-info-item">
+            <span id="elapsedTime">00:00</span>
+            <small>已工作</small>
+          </div>
+          <div class="work-info-item">
+            <span id="progressPercent">0%</span>
+            <small>完成度</small>
+          </div>
+        </div>
+
+        <div class="progress-bar-wrap anim-up d4">
+          <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+      </div>
+
+      <!-- 右侧：设置 + 按钮 + 健康提示 -->
+      <div class="right-panel">
+        <div class="anim-up d1">
+          <div class="page-title">久坐提醒</div>
+          <div class="page-subtitle">科学工作 · 健康生活</div>
+        </div>
+
+        <div class="section-title anim-up d2">基础设置</div>
+        <div class="settings-grid anim-up d2">
+          <div class="setting-card" id="workCard">
+            <div class="setting-header">
+              <div class="setting-icon" style="background:#fef3c7">💼</div>
+              <div>
+                <div class="setting-name">工作时长</div>
+                <div class="setting-en">Work</div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <input type="number" id="workTime" value="45" min="1" max="180">
+              <span>分钟</span>
+            </div>
+          </div>
+
+          <div class="setting-card" id="breakCard">
+            <div class="setting-header">
+              <div class="setting-icon" style="background:#dbeafe">☕</div>
+              <div>
+                <div class="setting-name">休息时长</div>
+                <div class="setting-en">Break</div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <input type="number" id="breakTime" value="5" min="1" max="60">
+              <span>分钟</span>
+            </div>
+          </div>
+
+          <div class="setting-card" id="postponeCard">
+            <div class="setting-header">
+              <div class="setting-icon" style="background:#fce7f3">⏱</div>
+              <div>
+                <div class="setting-name">推迟时长</div>
+                <div class="setting-en">Postpone</div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <input type="number" id="postponeTime" value="5" min="1" max="30">
+              <span>分钟</span>
+            </div>
+          </div>
+
+          <div class="setting-card" id="warningCard">
+            <div class="setting-header">
+              <div class="setting-icon" style="background:#fef9c3">⚠</div>
+              <div>
+                <div class="setting-name">锁屏预警</div>
+                <div class="setting-en">Warning</div>
+              </div>
+            </div>
+            <div class="setting-row" style="position:relative">
+              <input type="number" id="warningTime" value="5" min="3" max="60">
+              <span>秒</span>
+              <div class="input-tooltip" id="warningTooltip">最多可设置60秒提前预警</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="buttons-row anim-up d3">
+          <button class="btn btn-primary" id="startBtn">▶ 开始监控</button>
+          <button class="btn btn-secondary" id="pauseBtn" disabled>⏸ 暂停</button>
+          <button class="btn btn-danger" id="stopBtn">⏹ 停止</button>
+          <button class="btn btn-ghost" id="moreBtn">📋 更多提醒</button>
+        </div>
+
+        <div class="tip-card anim-up d4">
+          <div class="tip-icon">💡</div>
+          <div class="tip-text" id="tipText">久坐1小时，腰椎压力增加40%。站起来伸个懒腰，缓解疲劳。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 自定义提醒页 ==================== -->
+  <div class="view" id="view-reminders">
+    <div class="reminders-page">
+      <div class="page-nav anim-up d1">
+        <button class="back-btn" id="backBtn">←</button>
+        <div class="page-nav-title">自定义提醒</div>
+      </div>
+
+      <div class="reminders-grid" id="remindersGrid"></div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // ===== DOM =====
+    const timerDisplay  = document.getElementById('timerDisplay');
+    const progressRing  = document.getElementById('progressRing');
+    const progressBar   = document.getElementById('progressBar');
+    const statusBadge   = document.getElementById('statusBadge');
+    const statusText    = document.getElementById('statusText');
+    const elapsedTime   = document.getElementById('elapsedTime');
+    const progressPercent = document.getElementById('progressPercent');
+    const tipText       = document.getElementById('tipText');
+    const workTimeInput = document.getElementById('workTime');
+    const breakTimeInput= document.getElementById('breakTime');
+    const postponeInput = document.getElementById('postponeTime');
+    const warningInput  = document.getElementById('warningTime');
+    const startBtn      = document.getElementById('startBtn');
+    const pauseBtn      = document.getElementById('pauseBtn');
+    const stopBtn       = document.getElementById('stopBtn');
+    const moreBtn       = document.getElementById('moreBtn');
+    const backBtn       = document.getElementById('backBtn');
+    const remindersGrid = document.getElementById('remindersGrid');
+
+    function saveCurrentSettings() {
+      ipcRenderer.send('save-settings', {
+        workMinutes: parseInt(workTimeInput.value) || 45,
+        breakMinutes: parseInt(breakTimeInput.value) || 5,
+        preLockWarningTime: parseInt(warningInput.value) || 5,
+        postponeDuration: parseInt(postponeInput.value) || 5
+      });
+    }
+
+    workTimeInput.addEventListener('change', saveCurrentSettings);
+    breakTimeInput.addEventListener('change', saveCurrentSettings);
+    postponeInput.addEventListener('change', saveCurrentSettings);
+    warningInput.addEventListener('change', function() {
+      let val = parseInt(this.value) || 5;
+      const tooltip = document.getElementById('warningTooltip');
+      if (val > 60) {
+        this.value = 60;
+        tooltip.classList.add('show');
+        setTimeout(() => tooltip.classList.remove('show'), 2500);
+      } else if (val < 3) {
+        this.value = 3;
+      } else {
+        this.value = val;
+      }
+      saveCurrentSettings();
+    });
+
+    // ===== 状态 =====
+    let isRunning = false;
+    let isPaused = false;
+    let reminders = [];
+
+    // ===== 健康提示 =====
+    const tips = [
+      "久坐1小时，腰椎压力增加40%。站起来伸个懒腰，左右扭腰各5次。",
+      "久坐会导致臀肌失忆症。做5个深蹲，激活臀部肌肉。",
+      "眼睛也需要休息。远眺窗外20秒，让睫状肌放松。",
+      "久坐影响血液循环。原地踏步30秒，促进下肢血液回流。",
+      "颈椎长期前伸会导致富贵包。下巴后缩，做5次颈部伸展。",
+      "久坐增加心血管疾病风险。深呼吸5次，放松身心。",
+      "腰椎间盘最怕久坐。双手叉腰，做5次腰部后仰。",
+      "久坐会让代谢变慢。喝一杯水，促进新陈代谢。"
+    ];
+
+    function showTip() {
+      tipText.textContent = tips[Math.floor(Math.random() * tips.length)];
+    }
+
+    // ===== 工具 =====
+    function fmt(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+    }
+
+    function circumference(r) { return 2 * Math.PI * r; }
+
+    function updateProgress(pct) {
+      const circ = circumference(84);
+      const offset = circ - (pct / 100) * circ;
+      progressRing.style.strokeDasharray = circ;
+      progressRing.style.strokeDashoffset = offset;
+      progressBar.style.width = `${pct}%`;
+    }
+
+    // ===== 更新主页面 UI =====
+    function updateMainUI() {
+      const cards = ['workCard','breakCard','postponeCard','warningCard'];
+
+      if (isRunning) {
+        startBtn.disabled = true;
+        startBtn.textContent = '● 监控中';
+        pauseBtn.disabled = false;
+        cards.forEach(id => document.getElementById(id)?.classList.add('disabled'));
+        [workTimeInput, breakTimeInput, postponeInput, warningInput].forEach(i => i.disabled = true);
+
+        if (isPaused) {
+          pauseBtn.textContent = '▶ 继续';
+          statusBadge.className = 'status-badge paused';
+          statusText.textContent = '已暂停';
+        } else {
+          pauseBtn.textContent = '⏸ 暂停';
+          statusBadge.className = 'status-badge active';
+          statusText.textContent = '监控中';
+        }
+      } else {
+        startBtn.disabled = false;
+        startBtn.textContent = '▶ 开始监控';
+        pauseBtn.disabled = true;
+        pauseBtn.textContent = '⏸ 暂停';
+        statusBadge.className = 'status-badge';
+        statusText.textContent = '等待开始';
+        cards.forEach(id => document.getElementById(id)?.classList.remove('disabled'));
+        [workTimeInput, breakTimeInput, postponeInput, warningInput].forEach(i => i.disabled = false);
+        timerDisplay.textContent = '--:--';
+        elapsedTime.textContent = '00:00';
+        progressPercent.textContent = '0%';
+        updateProgress(0);
+      }
+    }
+
+    // ===== 导航 =====
+    function showView(name) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(`view-${name}`).classList.add('active');
+      if (name === 'reminders') renderReminders();
+    }
+
+    moreBtn.onclick = () => showView('reminders');
+    backBtn.onclick = () => showView('main');
+
+    // ===== 渲染提醒列表 =====
+    function renderReminders() {
+      remindersGrid.innerHTML = '';
+
+      reminders.forEach((r, idx) => {
+        const card = createReminderCard(r, idx);
+        card.style.animationDelay = `${0.04 + idx * 0.06}s`;
+        remindersGrid.appendChild(card);
+      });
+
+      const addCard = createAddCard();
+      addCard.style.animationDelay = `${0.04 + reminders.length * 0.06}s`;
+      remindersGrid.appendChild(addCard);
+    }
+
+    function createReminderCard(r, idx) {
+      const card = document.createElement('div');
+      card.className = 'reminder-card anim-slide';
+      const icon = r.name === '喝水提醒' ? '💧' : ['👀','🧘','🌿','🔔','📵','🧠','🦶','💆'][idx % 8];
+      const bgColor = r.enabled ? '#ede9fe' : '#f3f4f6';
+      const countdownText = r.enabled ? `(${fmt(r.remaining || r.interval * 60 * 1000)})` : '';
+
+      card.innerHTML = `
+        <div class="reminder-header">
+          <div class="reminder-icon" style="background:${bgColor}">${icon}</div>
+          <div class="reminder-info">
+            <div class="reminder-name" id="name-${r.name.replace(/\s/g,'')}" title="双击编辑">${r.name}</div>
+            <div class="reminder-countdown" id="cd-${r.name.replace(/\s/g,'')}">${countdownText}</div>
+          </div>
+          <div class="toggle ${r.enabled ? 'on' : ''}" data-name="${r.name}"></div>
+        </div>
+        <div class="reminder-body-row">
+          <input type="number" value="${r.interval}" min="1" max="180"
+            class="${r.enabled ? 'time-locked' : ''}"
+            data-name="${r.name}" ${r.enabled ? 'readonly' : ''}>
+          <span class="unit">分钟</span>
+          <button class="btn-icon refresh-icon" data-name="${r.name}" title="刷新">↻</button>
+          <button class="btn-icon btn-icon-danger delete-icon" data-name="${r.name}" title="删除">✕</button>
+        </div>
+      `;
+
+      const nameEl = card.querySelector('.reminder-name');
+      nameEl.ondblclick = function() {
+        const current = this.textContent;
+        const parentWidth = this.parentElement.offsetWidth;
+        this.innerHTML = `<input class="reminder-name-input" value="${current}" maxlength="20" style="max-width:${parentWidth}px">`;
+        const input = this.querySelector('input');
+        input.focus();
+        input.select();
+
+        const save = () => {
+          const newName = input.value.trim();
+          if (newName && newName !== current) {
+            ipcRenderer.send('rename-reminder', { oldName: current, newName });
+          } else {
+            this.textContent = current;
+          }
+        };
+        input.onblur = save;
+        input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { this.textContent = current; } };
+      };
+
+      card.querySelector('.toggle').onclick = function() {
+        const name = this.dataset.name;
+        const reminder = reminders.find(x => x.name === name);
+        if (!reminder) return;
+        const newEnabled = !reminder.enabled;
+        ipcRenderer.send('toggle-reminder', { name, enabled: newEnabled });
+      };
+
+      card.querySelector('input[type="number"]').onchange = function() {
+        const name = this.dataset.name;
+        const val = parseInt(this.value) || 30;
+        ipcRenderer.send('update-reminder', { name, field: 'interval', value: val });
+      };
+
+      card.querySelector('button.refresh-icon').onclick = function() {
+        ipcRenderer.send('reset-reminder', { name: this.dataset.name });
+      };
+
+      card.querySelector('button.delete-icon').onclick = function() {
+        ipcRenderer.send('remove-reminder', { name: this.dataset.name });
+      };
+
+      return card;
+    }
+
+    function createAddCard() {
+      const card = document.createElement('div');
+      card.className = 'add-card anim-slide';
+      card.innerHTML = `
+        <div class="add-icon">+</div>
+        <div class="add-label">新增提醒</div>
+      `;
+      card.onclick = () => showAddForm();
+      return card;
+    }
+
+    function showAddForm() {
+      const form = document.createElement('div');
+      form.className = 'add-form';
+      form.innerHTML = `
+        <div class="form-row">
+          <input type="text" id="newName" placeholder="提醒名称" maxlength="20">
+        </div>
+        <div class="form-row">
+          <input type="number" id="newInterval" value="30" min="1" max="180">
+          <span>分钟</span>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" id="cancelBtn">取消</button>
+          <button class="btn btn-primary" id="confirmBtn">确定</button>
+        </div>
+      `;
+
+      const addCard = remindersGrid.querySelector('.add-card');
+      remindersGrid.insertBefore(form, addCard);
+      addCard.style.display = 'none';
+
+      form.querySelector('#cancelBtn').onclick = () => { form.remove(); addCard.style.display = ''; };
+      form.querySelector('#confirmBtn').onclick = () => {
+        const name = document.getElementById('newName').value.trim();
+        const interval = parseInt(document.getElementById('newInterval').value) || 30;
+        if (name && interval > 0) {
+          ipcRenderer.send('add-reminder', { name, interval, postpone: 5 });
+          form.remove();
+          addCard.style.display = '';
+        }
+      };
+    }
+
+    // ===== 主页面按钮 =====
+    startBtn.onclick = () => {
+      ipcRenderer.send('start-monitoring', {
+        workMinutes: parseInt(workTimeInput.value) || 45,
+        breakMinutes: parseInt(breakTimeInput.value) || 5,
+        settings: {
+          preLockWarningTime: parseInt(warningInput.value) || 5,
+          postponeDuration: parseInt(postponeInput.value) || 5
+        }
+      });
+      isRunning = true;
+      isPaused = false;
+      updateMainUI();
+      showTip();
+    };
+
+    pauseBtn.onclick = () => {
+      if (isPaused) { ipcRenderer.send('resume-monitoring'); isPaused = false; }
+      else          { ipcRenderer.send('pause-monitoring');  isPaused = true;  }
+      updateMainUI();
+    };
+
+    stopBtn.onclick = () => {
+      ipcRenderer.send('stop-monitoring');
+      isRunning = false;
+      isPaused = false;
+      updateMainUI();
+    };
+
+    // ===== IPC 接收 =====
+    ipcRenderer.on('update-status', (e, data) => {
+      timerDisplay.textContent = fmt(data.remaining);
+      elapsedTime.textContent = fmt(data.elapsed);
+      const pct = Math.round(data.progress);
+      progressPercent.textContent = `${pct}%`;
+      updateProgress(pct);
+      if (data.postponeCount !== undefined) {
+        updatePostponeWarning(data.postponeCount);
+      }
+    });
+
+    ipcRenderer.on('monitoring-paused',  () => { isPaused = true;  updateMainUI(); });
+    ipcRenderer.on('monitoring-resumed',  () => { isPaused = false; updateMainUI(); });
+    ipcRenderer.on('monitoring-stopped',  () => {
+      isRunning = false; isPaused = false; updateMainUI();
+      updatePostponeWarning(0);
+    });
+
+    ipcRenderer.on('postpone-status', (e, data) => {
+      updatePostponeWarning(data.count);
+    });
+
+    function updatePostponeWarning(count) {
+      document.body.classList.remove('warn-yellow', 'warn-red');
+      if (count === 1) {
+        document.body.classList.add('warn-yellow');
+      } else if (count >= 2) {
+        document.body.classList.add('warn-red');
+      }
+    }
+
+    // 同步提醒列表
+    ipcRenderer.on('custom-reminders-updated', (e, list) => {
+      reminders = list;
+      if (document.getElementById('view-reminders').classList.contains('active')) {
+        renderReminders();
+      }
+    });
+
+    // 每秒倒计时更新
+    ipcRenderer.on('countdown-updated', (e, countdowns) => {
+      countdowns.forEach(({ name, remaining, enabled }) => {
+        const r = reminders.find(x => x.name === name);
+        if (r) { r.remaining = remaining; r.enabled = enabled; }
+
+        const cdEl = document.getElementById(`cd-${name.replace(/\s/g,'')}`);
+        if (cdEl) {
+          if (enabled) {
+            cdEl.textContent = `(${fmt(remaining)})`;
+            cdEl.classList.remove('paused');
+          } else {
+            cdEl.textContent = '';
+            cdEl.classList.add('paused');
+          }
+        }
+      });
+    });
+
+    // 加载保存的设置
+    ipcRenderer.on('load-settings', (e, settings) => {
+      if (settings.workMinutes) workTimeInput.value = settings.workMinutes;
+      if (settings.breakMinutes) breakTimeInput.value = settings.breakMinutes;
+      if (settings.preLockWarningTime) warningInput.value = settings.preLockWarningTime;
+      if (settings.postponeDuration) postponeInput.value = settings.postponeDuration;
+    });
+
+    // ===== 初始化 =====
+    updateProgress(0);
+    showTip();
+  </script>
+</body>
+</html>

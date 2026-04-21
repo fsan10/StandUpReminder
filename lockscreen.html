@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>休息时间</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #6366f1;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --bg: #1a1a2e;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99,102,241,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236,72,153,0.1) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 30% at 10% 60%, rgba(245,158,11,0.08) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      transform: translateZ(0);
+    }
+
+    .top-icon {
+      font-size: 56px;
+      animation: breathe 4s ease-in-out infinite;
+      will-change: transform;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+
+    .countdown {
+      font-size: 96px;
+      font-weight: 200;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 10px;
+      background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .countdown-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 6px;
+      margin-top: 10px;
+    }
+
+    .ring-wrap {
+      position: relative;
+      width: 200px;
+      height: 200px;
+    }
+
+    .ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      border-top-color: var(--primary);
+      border-right-color: rgba(99,102,241,0.25);
+      animation: spin 6s linear infinite;
+      will-change: transform;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .ring-inner {
+      position: absolute;
+      inset: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-bottom-color: var(--secondary);
+      border-left-color: rgba(236,72,153,0.2);
+      animation: spin 4s linear infinite reverse;
+      will-change: transform;
+    }
+
+    .ring-center {
+      position: absolute;
+      inset: 40px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ring-center-icon {
+      font-size: 32px;
+    }
+
+    .tip-card {
+      max-width: 520px;
+      padding: 24px 32px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+    }
+
+    .tip-card::before {
+      content: '';
+      display: block;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 2px;
+      margin-bottom: 20px;
+    }
+
+    .tip-title {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    .tip-text {
+      font-size: 18px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .progress-wrap {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 2px;
+      width: 100%;
+      transition: width 1s linear;
+    }
+
+    .footer {
+      font-size: 13px;
+      color: rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-icon">🧘</div>
+
+    <div class="ring-wrap">
+      <div class="ring"></div>
+      <div class="ring-inner"></div>
+      <div class="ring-center">
+        <div class="ring-center-icon">☕</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="countdown" id="countdown">05:00</div>
+      <div class="countdown-sub">REMAINING</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-title">💡 健康小贴士</div>
+      <div class="tip-text" id="tipText">久坐1小时，腰椎压力增加40%。站起来伸个懒腰。</div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-info">
+        <span>休息进度</span>
+        <span id="progressPercent">100%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+    </div>
+
+    <div class="footer">🔒 休息时间结束后将自动解锁</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const countdownEl = document.getElementById('countdown');
+    const tipTextEl = document.getElementById('tipText');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+
+    let totalDuration = 5 * 60 * 1000;
+    let remainingTime = totalDuration;
+    let countdownInterval = null;
+
+    function fmt(ms) {
+      const s = Math.floor(ms / 1000);
+      return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+    }
+
+    function tick() {
+      remainingTime = Math.max(0, remainingTime - 1000);
+      countdownEl.textContent = fmt(remainingTime);
+
+      const pct = (remainingTime / totalDuration) * 100;
+      progressBar.style.width = pct + '%';
+      progressPercent.textContent = Math.round(pct) + '%';
+
+      if (remainingTime <= 0 && countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+    }
+
+    ipcRenderer.on('start-break', (e, data) => {
+      totalDuration = data.duration;
+      remainingTime = totalDuration;
+      countdownEl.textContent = fmt(remainingTime);
+      progressBar.style.width = '100%';
+      progressPercent.textContent = '100%';
+      if (data.tip) tipTextEl.textContent = data.tip;
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(tick, 1000);
+    });
+
+    document.addEventListener('keydown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }, true);
+    document.addEventListener('keyup', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }, true);
+    document.addEventListener('keypress', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }, true);
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('selectstart', e => e.preventDefault());
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('cut', e => e.preventDefault());
+    document.addEventListener('paste', e => e.preventDefault());
+    document.addEventListener('mousedown', e => e.preventDefault());
+    document.addEventListener('dragstart', e => e.preventDefault());
+  </script>
+</body>
+</html>

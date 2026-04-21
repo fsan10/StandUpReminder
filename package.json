@@ -1,0 +1,34 @@
+{
+  "name": "standup-reminder",
+  "version": "1.0.0",
+  "description": "久坐提醒工具 - 定时强制休息，保护腰椎健康",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "build": "electron-builder",
+    "dist": "electron-builder --win"
+  },
+  "author": "冯三十",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.fengsanshi.standup-reminder",
+    "productName": "StandUpReminder",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  }
+}
